@@ -206,7 +206,7 @@ int main()
     using namespace aoc2025::day02;
     std::ifstream file("./input.txt");
     std::string line;
-    if (!std::getline(file, line))
+    if (!file || !std::getline(file, line))
     {
         fmt::println("Failed to read input file");
         return 1;

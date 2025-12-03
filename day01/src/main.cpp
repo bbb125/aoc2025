@@ -79,6 +79,11 @@ int main()
 {
     using namespace aoc2025::day01;
     std::ifstream file("./input1.txt");
+    if (!file)
+    {
+        fmt::println("Failed to read input file");
+        return 1;
+    }
     auto input = std::views::istream<std::string>(file)
                  | std::views::transform(
                      [](const std::string& line)
