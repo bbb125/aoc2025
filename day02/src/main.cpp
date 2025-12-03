@@ -94,7 +94,7 @@ static_assert(pow10<std::int64_t>(5) == 100000);
 
 namespace aoc2025::day02
 {
-constexpr auto trace = false;
+[[maybe_unused]] constexpr auto trace = false;
 using Int = std::int64_t;
 using Range = std::pair<Int, Int>;
 
