@@ -1,0 +1,13 @@
+[requires]
+fmt/12.1.0
+ctre/3.10.0
+
+[options]
+fmt/*:header_only=True
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout
