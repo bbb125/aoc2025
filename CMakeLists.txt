@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(aoc25)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -13,15 +13,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_options(-Wno-error=unknown-warning-option)
 endif()
 
-
+add_compile_options(-fconstexpr-ops-limit=1000000000)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(NOT WITH_SANITIZERS OR WITH_SANITIZERS STREQUAL "")
-        set(WITH_SANITIZERS address,undefined)
-    endif()
-
-    add_compile_options(-fsanitize=${WITH_SANITIZERS})
-    add_compile_options(-fno-optimize-sibling-calls)
-    add_link_options(-fsanitize=${WITH_SANITIZERS})
+# todo: had  to use gcc because clang's stl sucks, but no asan on apple's gcc -- figure out later
+#    if(NOT WITH_SANITIZERS OR WITH_SANITIZERS STREQUAL "")
+#        set(WITH_SANITIZERS address,undefined)
+#    endif()
+#
+#    add_compile_options(-fsanitize=${WITH_SANITIZERS})
+#    add_compile_options(-fno-optimize-sibling-calls)
+#    add_link_options(-fsanitize=${WITH_SANITIZERS})
     add_definitions(-D_GLIBCXX_ASSERTIONS)
     if(WITH_SANITIZERS MATCHES "address")
         add_compile_options(-fsanitize-address-use-after-scope)
@@ -33,7 +34,10 @@ endif()
 
 find_package(fmt REQUIRED)
 find_package(ctre REQUIRED)
+#find_package(range-v3 REQUIRED) ## cartesian_product
 
 add_subdirectory(day01)
 add_subdirectory(day02)
 add_subdirectory(day03)
+add_subdirectory(day04)
+add_subdirectory(day05)
