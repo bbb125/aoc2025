@@ -21,14 +21,14 @@ constexpr std::pair<std::int64_t, std::int64_t> solveImpl(std::span<std::string>
         std::vector<std::int64_t> line;
         std::int64_t splitCount;
     };
-    auto initAcc = [&]
+    auto workRow = [&]
     {
-        return Accumulator{.line = std::vector(std::size(input), 0ll), .splitCount = 0};
+        return std::vector(std::size(input), 0ll);
     };
     auto result = std::ranges::fold_left(  //
         input,
-        initAcc(),
-        [next = std::vector(std::size(input), 0ll)](auto&& acc, const auto& line) mutable
+        Accumulator{workRow(), 0ll},
+        [next = workRow()](auto&& acc, const auto& line) mutable
         {
             std::ranges::fill(next, 0ll);
             for (auto [i, ch] : line | std::views::enumerate)

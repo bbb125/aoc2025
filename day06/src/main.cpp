@@ -58,7 +58,7 @@ static_assert(
 
 constexpr std::int64_t processInput2(const std::vector<std::string>& lines)
 {
-    // ugly, but surprisingly still can be constexpr
+    // ugly, but surprisingly, still can be constexpr
     namespace rv = std::views;
     auto columns = std::ssize(lines[0]);
     auto rows = std::ssize(lines);
@@ -84,7 +84,7 @@ constexpr std::int64_t processInput2(const std::vector<std::string>& lines)
             [](auto ch)
             { return ch == '*' ? Instruction::Mul : Instruction::Add; })
         | std::ranges::to<std::vector<Instruction>>();
-    // zeroes are not delimiters - group by zeroes and apply instruction
+    // zeroes are now delimiters - group by zeroes and apply instruction
     auto groupResults =  //
         numbers | rv::split(0) | rv::enumerate
         | rv::transform(

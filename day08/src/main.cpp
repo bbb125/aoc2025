@@ -73,8 +73,7 @@ constexpr auto solveTree(std::span<const geometry::Point> points,
             .transform([&](auto totalIt) { return itNum < totalIt; })
             .value_or(std::ssize(connections) < std::ssize(points) - 1);
     };
-    for (const auto& [_, edge] :
-         edges | rv::enumerate | rv::take_while(notDone))
+    for (const auto& [_, edge] : edges | rv::enumerate | rv::take_while(notDone))
     {
         auto newColor = vertexColor[edge.id1];
         auto oldColor = vertexColor[edge.id2];
@@ -82,6 +81,7 @@ constexpr auto solveTree(std::span<const geometry::Point> points,
             continue;
 
         connections.push_back({edge.id1, edge.id2});
+        // we already O(N^2), because of computing distances, so don't care about another loop
         rng::replace(vertexColor, oldColor, newColor);
     }
     return std::pair{std::move(vertexColor), std::move(connections)};
