@@ -1,3 +1,5 @@
+#include "util/geometry3d.h"
+
 #include <ctre.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -11,33 +13,10 @@
 #include <ranges>
 #include <optional>
 
-namespace aoc2025::geometry
-{
-struct Point
-{
-    std::int64_t x;
-    std::int64_t y;
-    std::int64_t z;
-};
-
-auto format_as(const Point& point)
-{
-    return std::tie(point.x, point.y, point.x);
-}
-
-constexpr auto euclideanDistanceSquare(const Point& a, const Point& b)
-{
-    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
-           + (a.z - b.z) * (a.z - b.z);
-}
-static_assert(euclideanDistanceSquare({0, 0, 0}, {0, 0, 0}) == 0);
-static_assert(euclideanDistanceSquare({0, 0, 0}, {1, 1, 1}) == 3);
-static_assert(euclideanDistanceSquare({1, 2, 3}, {4, 5, 6}) == 27);
-}  // namespace aoc2025::geometry
 namespace aoc2025::day08
 {
 
-constexpr auto solveTree(std::span<const geometry::Point> points,
+constexpr auto solveTree(std::span<const geometry3d::Point> points,
                          std::optional<std::int64_t> iterations)
 {
     namespace rv = std::ranges::views;
@@ -59,7 +38,7 @@ constexpr auto solveTree(std::span<const geometry::Point> points,
             edges.push_back({
                 .id1 = i,
                 .id2 = j,
-                .distance = geometry::euclideanDistanceSquare(points[i], points[j]),
+                .distance = geometry3d::euclideanDistanceSquare(points[i], points[j]),
             });
         }
     }
@@ -87,7 +66,7 @@ constexpr auto solveTree(std::span<const geometry::Point> points,
     return std::pair{std::move(vertexColor), std::move(connections)};
 }
 
-constexpr auto solve1(std::span<const geometry::Point> points, std::int64_t iterations)
+constexpr auto solve1(std::span<const geometry3d::Point> points, std::int64_t iterations)
 {
     namespace rv = std::ranges::views;
     namespace rng = std::ranges;
@@ -102,7 +81,7 @@ constexpr auto solve1(std::span<const geometry::Point> points, std::int64_t iter
     return rng::fold_left(groups | rv::take(3), 1ll, std::multiplies{});
 }
 
-constexpr auto testSet = std::to_array<geometry::Point>({
+constexpr auto testSet = std::to_array<geometry3d::Point>({
     {162, 817, 812}, {57, 618, 57},   {906, 360, 560}, {592, 479, 940},
     {352, 342, 300}, {466, 668, 158}, {542, 29, 236},  {431, 825, 988},
     {739, 650, 466}, {52, 470, 668},  {216, 146, 977}, {819, 987, 18},
@@ -112,7 +91,7 @@ constexpr auto testSet = std::to_array<geometry::Point>({
 
 static_assert(solve1(testSet, 10) == 40);
 
-constexpr auto solve2(std::span<const geometry::Point> points)
+constexpr auto solve2(std::span<const geometry3d::Point> points)
 {
     auto [_, connections] = solveTree(points, std::nullopt);
     auto [i, j] = connections.back();
@@ -127,12 +106,12 @@ int main()
     using namespace aoc2025::day08;
 
     std::ifstream file("./input.txt");
-    if (!file)
+    if (not file)
     {
         fmt::println("Failed to open file");
         return 1;
     }
-    std::vector<aoc2025::geometry::Point> points;
+    std::vector<aoc2025::geometry3d::Point> points;
     for (std::string line; std::getline(file, line);)
     {
         if (auto [_, x, y, z] = ctre::match<"([0-9]+),([0-9]+),([0-9]+)">(line))

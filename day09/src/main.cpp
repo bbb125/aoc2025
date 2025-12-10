@@ -1,3 +1,6 @@
+#include "util/geometry2d.h"
+#include "util/views.h"
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -5,62 +8,13 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <concepts>
 #include <fstream>
 #include <ranges>
 #include <span>
 #include <vector>
 
-
-namespace aoc2025::views
-{
-template <std::integral I>
-constexpr auto upper_triangle(I n)
-{
-    namespace rv = std::views;
-    return rv::iota(I{}, n)
-           | rv::transform(
-               [n](auto i)
-               {
-                   auto inner =
-                       rv::iota(i + 1, n)
-                       | rv::transform([i](I j) { return std::pair{i, j}; });
-                   return inner;  // prvalue view (safe)
-               })
-           | rv::join;
-}
-}  // namespace aoc2025::views
-
-namespace aoc2025::geometry2d
-{
-struct Point
-{
-    std::int64_t x;
-    std::int64_t y;
-};
-
-[[maybe_unused]] constexpr auto format_as(const Point& point)
-{
-    return std::tie(point.x, point.y);
-}
-
-constexpr auto orderPoints(Point p1, Point p2)
-{
-    auto [left, right] = std::minmax(p1.x, p2.x);
-    auto [bottom, top] = std::minmax(p1.y, p2.y);
-    return std::pair{Point{left, bottom}, Point{right, top}};
-}
-
-constexpr auto area(Point p1, Point p2)
-{
-    auto [lo, hi] = orderPoints(p1, p2);
-    return (hi.x - lo.x + 1) * (hi.y - lo.y + 1);
-}
-}  // namespace aoc2025::geometry2d
-
 namespace aoc2025::day09
 {
-
 
 constexpr auto solve1(std::span<const geometry2d::Point> points)
 {

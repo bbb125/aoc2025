@@ -36,6 +36,7 @@ find_package(fmt REQUIRED)
 find_package(ctre REQUIRED)
 #find_package(range-v3 REQUIRED) ## cartesian_product
 
+add_subdirectory(util)
 add_subdirectory(day01)
 add_subdirectory(day02)
 add_subdirectory(day03)
