@@ -166,7 +166,7 @@ int main()
                                               | std::ranges::to<std::string>();
                                 return static_cast<std::int8_t>(std::stoi(numStr));
                             })
-                        | std::ranges::to<std::vector<std::int8_t>>());
+                        | std::ranges::to<std::vector>());
                 })
             | std::ranges::to<std::vector>();
 

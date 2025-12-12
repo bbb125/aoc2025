@@ -1,3 +1,5 @@
+#include "util/algorithm.h"
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -53,8 +55,7 @@ constexpr std::pair<std::int64_t, std::int64_t> solveImpl(std::span<std::string>
             std::swap(acc.line, next);
             return std::move(acc);
         });
-    return {result.splitCount,
-            std::ranges::fold_left(result.line, 0ll, std::plus<>{})};
+    return {result.splitCount, algorithm::sum(result.line)};
 }
 
 static_assert(

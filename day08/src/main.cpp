@@ -1,4 +1,6 @@
 #include "util/geometry3d.h"
+#include "util/views.h"
+#include "util/functors.h"
 
 #include <ctre.hpp>
 #include <fmt/format.h>
@@ -29,27 +31,25 @@ constexpr auto solveTree(std::span<const geometry3d::Point> points,
         std::int64_t distance;
     };
 
-    std::vector<Edge> edges;
-    edges.reserve(std::size(points) * (std::size(points) - 1) / 2);
-    for (auto i = 0ll; i < std::ssize(points); ++i)
-    {
-        for (auto j = i + 1; j < std::ssize(points); ++j)
-        {
-            edges.push_back({
-                .id1 = i,
-                .id2 = j,
-                .distance = geometry3d::euclideanDistanceSquare(points[i], points[j]),
-            });
-        }
-    }
+    auto edges =
+        views::upperTriangle(std::ssize(points))
+        | rv::transform(
+            [&](auto val) -> Edge
+            {
+                auto [i, j] = val;
+                return {.id1 = i,
+                        .id2 = j,
+                        .distance = geometry3d::euclideanDistanceSquare(points[i],
+                                                                        points[j])};
+            })
+        | rng::to<std::vector>();
     rng::sort(edges, std::less{}, &Edge::distance);
     auto vertexColor = rv::iota(0ll, std::ssize(points)) | rng::to<std::vector>();
     std::vector<std::pair<std::int64_t, std::int64_t>> connections;
     auto notDone = [&](const auto& val)
     {
         const auto& [itNum, _] = val;
-        return iterations
-            .transform([&](auto totalIt) { return itNum < totalIt; })
+        return iterations.transform(std::bind_front(std::less{}, itNum))
             .value_or(std::ssize(connections) < std::ssize(points) - 1);
     };
     for (const auto& [_, edge] : edges | rv::enumerate | rv::take_while(notDone))
@@ -59,7 +59,7 @@ constexpr auto solveTree(std::span<const geometry3d::Point> points,
         if (newColor == oldColor)
             continue;
 
-        connections.push_back({edge.id1, edge.id2});
+        connections.emplace_back(edge.id1, edge.id2);
         // we already O(N^2), because of computing distances, so don't care about another loop
         rng::replace(vertexColor, oldColor, newColor);
     }
@@ -73,10 +73,8 @@ constexpr auto solve1(std::span<const geometry3d::Point> points, std::int64_t it
 
     auto [vertexColor, _] = solveTree(points, iterations);
     rng::sort(vertexColor);
-    auto groups =
-        vertexColor | rv::chunk_by(rng::equal_to{})
-        | rv::transform([](const auto& chunk) { return std::ssize(chunk); })
-        | rng::to<std::vector>();
+    auto groups = vertexColor | rv::chunk_by(rng::equal_to{})
+                  | rv::transform(functors::ssize) | rng::to<std::vector>();
     rng::sort(groups, std::greater{});
     return rng::fold_left(groups | rv::take(3), 1ll, std::multiplies{});
 }

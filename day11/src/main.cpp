@@ -1,3 +1,8 @@
+#include "util/algorithm.h"
+#include "util/functors.h"
+#include "util/views.h"
+
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -32,10 +37,8 @@ auto solve1(const Connections& connections, const Vertex& from, const Vertex& to
         if (connectionsIt == std::end(connections))
             return 0;
 
-        auto pathCount = std::ranges::fold_left(  //
-            connectionsIt->second | std::views::transform(self),
-            0ll,
-            std::plus{});
+        auto pathCount = algorithm::sum(  //
+            connectionsIt->second | std::views::transform(self));
 
         cache[current] = pathCount;
         return pathCount;
@@ -101,7 +104,6 @@ void test2()
 int main()
 {
     using namespace aoc2025::day11;
-
     test1();
     test2();
 
@@ -120,12 +122,10 @@ int main()
         auto edges = std::string_view{line}.substr(separator + 1);
         connections.emplace(  //
             vertex,
-            edges | std::views::split(' ')
-                | std::views::filter([](auto part)
-                                     { return not std::empty(part); })
+            edges | std::views::split(' ') | aoc2025::views::notEmpty
                 | std::views::transform(
                     [](auto part)
-                    { return std::string{part.begin(), part.end()}; })
+                    { return part | std::ranges::to<std::string>(); })
                 | std::ranges::to<std::vector>());
     }
     fmt::println("day11.solution1: {}", solve1(connections, "you", "out"));  // 497

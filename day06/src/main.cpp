@@ -1,3 +1,6 @@
+#include "util/algorithm.h"
+#include "util/views.h"
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -42,7 +45,7 @@ constexpr std::vector<std::int64_t> findTotal(
 constexpr std::int64_t solve1(const std::vector<std::vector<std::int64_t>>& input,
                               const std::vector<Instruction>& instructions)
 {
-    return std::ranges::fold_left(findTotal(input, instructions), 0ll, std::plus<>{});
+    return algorithm::sum(findTotal(input, instructions));
 }
 
 static_assert(
@@ -62,7 +65,7 @@ constexpr std::int64_t processInput2(const std::vector<std::string>& lines)
     namespace rv = std::views;
     auto columns = std::ssize(lines[0]);
     auto rows = std::ssize(lines);
-    auto notEmpty = rv::filter([](auto ch) { return ch != ' '; });
+    auto notEmpty = rv::filter(std::bind_front(std::not_equal_to{}, ' '));
     auto numbers =  // make a series of numbers from columns
         rv::iota(0, columns)
         | rv::transform(
@@ -129,7 +132,7 @@ int main()
     auto [input01, instructions01] = []
     {
         std::ifstream file("./input.txt");
-        if (!file)
+        if (not file)
         {
             fmt::println("Failed to open file");
             std::exit(EXIT_FAILURE);
@@ -137,27 +140,24 @@ int main()
 
         std::vector<std::vector<std::int64_t>> input;
         std::vector<Instruction> instructions;
-        constexpr auto noEmpty =
-            std::views::filter([](const auto& part) { return not part.empty(); });
         for (std::string line; std::getline(file, line);)
         {
             if (line[0] == '*' || line[0] == '+')
             {
-                instructions = std::views::split(line, ' ') | noEmpty
-                               | std::views::transform(
-                                   [](auto part)
-                                   {
-                                       return std::string_view{std::begin(part),
-                                                               std::end(part)}
-                                                      == "*"
-                                                  ? Instruction::Mul
-                                                  : Instruction::Add;
-                                   })
-                               | std::ranges::to<std::vector<Instruction>>();
+                instructions =
+                    std::views::split(line, ' ') | aoc2025::views::notEmpty
+                    | std::views::transform(
+                        [](auto part)
+                        {
+                            return std::string_view{std::begin(part), std::end(part)} == "*"
+                                       ? Instruction::Mul
+                                       : Instruction::Add;
+                        })
+                    | std::ranges::to<std::vector<Instruction>>();
             }
             else
             {
-                input.push_back(std::views::split(line, ' ') | noEmpty
+                input.push_back(std::views::split(line, ' ') | aoc2025::views::notEmpty
                                 | std::views::transform(
                                     [](auto&& part)
                                     {

@@ -7,7 +7,7 @@
 namespace aoc2025::views
 {
 template <std::integral I>
-constexpr auto upper_triangle(I n)
+constexpr auto upperTriangle(I n)
 {
     namespace rv = std::views;
     return rv::iota(I{}, n)
@@ -21,4 +21,7 @@ constexpr auto upper_triangle(I n)
                })
            | rv::join;
 }
+
+constexpr auto notEmpty = std::views::filter(
+    [](const auto& container) noexcept { return not std::empty(container); });
 }  // namespace aoc2025::views

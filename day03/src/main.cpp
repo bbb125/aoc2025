@@ -1,3 +1,5 @@
+#include "util/algorithm.h"
+
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -68,10 +70,8 @@ static_assert(maxJoltageN("818181911112111", 12) == 888911112111);
 template <StringLike T>
 constexpr std::uint64_t solve1(std::span<T> banks)
 {
-    return std::ranges::fold_left(  //
-        banks | std::views::transform(std::bind_back(maxJoltageN<T>, 2)),
-        0ull,
-        std::plus<>{});
+    return algorithm::sum(
+        banks | std::views::transform(std::bind_back(maxJoltageN<T>, 2)));
 }
 
 static_assert(

@@ -1,3 +1,7 @@
+#include "util/algorithm.h"
+
+#include <ctre.hpp>
+
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -58,12 +62,9 @@ static_assert(
 constexpr auto solve2(std::vector<IdRange> ranges)
 {
     namespace rv = std::ranges::views;
-    return std::ranges::fold_left(  //
-        combineOverlappingRanges(std::move(ranges))
-            | rv::transform([](const auto& range)
-                            { return range.end - range.start + 1; }),
-        Id{},
-        std::plus{});
+    return algorithm::sum(combineOverlappingRanges(std::move(ranges))
+                          | rv::transform([](const auto& range)
+                                          { return range.end - range.start + 1; }));
 }
 
 static_assert(
@@ -78,7 +79,7 @@ int main()
 {
     using namespace aoc2025::day05;
     std::ifstream file("./input.txt");
-    if (!file)
+    if (not file)
     {
         fmt::println("Failed to read input file");
         return 1;
@@ -89,12 +90,8 @@ int main()
 
         for (std::string line; std::getline(file, line) && !line.empty();)
         {
-            if (auto pos = line.find('-'); pos != std::string::npos)
-            {
-                Id start = std::stoll(line.substr(0, pos));
-                Id end = std::stoll(line.substr(pos + 1));
-                ranges.push_back({start, end});
-            }
+            auto [_, start, end] = ctre::match<"([0-9]+)-([0-9]+)">(line);
+            ranges.push_back({start.to_number<Id>(), end.to_number<Id>()});
         }
         return ranges;
     }();

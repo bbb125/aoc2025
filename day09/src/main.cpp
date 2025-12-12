@@ -20,7 +20,7 @@ constexpr auto solve1(std::span<const geometry2d::Point> points)
 {
     namespace rv = std::ranges::views;
     return std::ranges::max(  //
-        views::upper_triangle(std::ssize(points))
+        views::upperTriangle(std::ssize(points))
         | rv::transform(
             [points](auto pair)
             {
@@ -48,7 +48,7 @@ constexpr auto solve2(std::span<const geometry2d::Point> points)
     // ugly brute force, but will work in given dimensions
 
     auto candidates =  //
-        views::upper_triangle(std::ssize(points))
+        views::upperTriangle(std::ssize(points))
         | rv::filter(
             [points](auto pair)
             {
