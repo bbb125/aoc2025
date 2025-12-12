@@ -114,6 +114,12 @@ static_assert(
         return solve1(testSet) == 7;
     }());
 
+
+constexpr auto solve2()
+{
+    // is that system of linear equations with brute force in the end?
+    return 42;
+}
 }  // namespace aoc2025::day10
 
 int main()

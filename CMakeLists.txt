@@ -34,7 +34,6 @@ endif()
 
 find_package(fmt REQUIRED)
 find_package(ctre REQUIRED)
-#find_package(range-v3 REQUIRED) ## cartesian_product
 
 add_subdirectory(util)
 add_subdirectory(day01)
@@ -47,3 +46,4 @@ add_subdirectory(day07)
 add_subdirectory(day08)
 add_subdirectory(day09)
 add_subdirectory(day10)
+add_subdirectory(day11)
