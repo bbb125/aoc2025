@@ -22,6 +22,6 @@ constexpr auto upperTriangle(I n)
            | rv::join;
 }
 
-constexpr auto notEmpty = std::views::filter(
+constexpr inline auto notEmpty = std::views::filter(
     [](const auto& container) noexcept { return not std::empty(container); });
 }  // namespace aoc2025::views

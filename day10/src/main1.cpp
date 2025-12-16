@@ -114,12 +114,6 @@ static_assert(
         return solve1(testSet) == 7;
     }());
 
-
-constexpr auto solve2()
-{
-    // is that system of linear equations with brute force in the end?
-    return 42;
-}
 }  // namespace aoc2025::day10
 
 int main()
@@ -148,7 +142,7 @@ int main()
     std::vector<MachineConfiguration> configurations;
     for (std::string line; std::getline(file, line);)
     {
-        auto [_1, mask, buttons, _2] =
+        auto [_1, mask, buttons, joltages] =
             ctre::match<"\\[([\\.#]+)\\] (\\(.*\\)) \\{(.*)\\}">(line);
         // fmt::println("mask: {}, buttons: {}", mask.to_view(), buttons.to_view());
         [[maybe_unused]] auto switchers =

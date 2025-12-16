@@ -12,7 +12,7 @@ struct Point
     std::int64_t z;
 };
 
-auto format_as(const Point& point)
+constexpr auto format_as(const Point& point)
 {
     return std::tie(point.x, point.y, point.x);
 }

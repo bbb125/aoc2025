@@ -1,0 +1,297 @@
+#include "util/algorithm.h"
+#include "util/iterator.h"
+
+
+#include <ctre.hpp>
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
+#include <algorithm>
+#include <bitset>
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <fstream>
+#include <ranges>
+#include <span>
+#include <string>
+#include <vector>
+#include <optional>
+#include <generator>
+#include <numeric>
+
+
+namespace rv = std::ranges::views;
+namespace rng = std::ranges;
+
+namespace aoc2025::day10
+{
+using Container = std::vector<int>;
+struct MachineConfiguration
+{
+    Container targetState;
+    std::vector<Container> buttons;
+};
+
+using Row = std::vector<std::int64_t>;
+using Matrix = std::vector<Row>;
+
+constexpr auto isZero = std::bind_front(std::equal_to{}, 0);
+
+void eliminateRowWith(Row& target, const Row& pivot, std::size_t pivotIndex)
+{
+    if (target[pivotIndex] == 0)
+        return;
+
+    auto gcd = std::gcd(pivot[pivotIndex], target[pivotIndex]);
+
+    auto targetMultiplier = target[pivotIndex] / gcd;
+    auto pivotMultiplier = pivot[pivotIndex] / gcd;
+
+    std::transform(  //
+        iterator::nth(pivot, pivotIndex),
+        std::cend(pivot),
+        iterator::nth(target, pivotIndex),
+        iterator::nth(target, pivotIndex),
+        [&](auto pivot, auto target)
+        { return target * pivotMultiplier - pivot * targetMultiplier; });
+}
+
+void swapColumn(Matrix& target, std::size_t lhs, std::size_t rhs)
+{
+    for (auto& row : target)
+        std::swap(row[lhs], row[rhs]);
+}
+
+auto gaussianElimination(Matrix& matrix)
+{
+    // We will bruteforce free variables later, so we need to know their limits
+    // For each column, find the minimum target value it affects.
+    // Limits are part of Gaussian elimination, because we may swap columns
+    // and need to track limits accordingly.
+    auto limits =
+        rv::iota(0ll, std::ssize(matrix[0]) - 1)
+        | rv::transform(
+            [&](auto i)
+            {
+                return rng::min(
+                    rv::iota(0, std::ssize(matrix))
+                    | rv::filter([&](auto j) { return matrix[j][i] != 0; })
+                    | rv::transform([&](auto j) { return matrix[j].back(); }));
+            })
+        | rng::to<std::vector>();
+
+    for (std::size_t workSize = std::size(matrix), i = 0; i < workSize; ++i)
+    {
+        // find non zero pivot
+        auto pivot = [&]() -> std::optional<std::pair<std::size_t, std::size_t>>
+        {
+            // prioritize row swap
+            auto rightBottomRectangle =
+                rv::cartesian_product(rv::iota(i, std::size(matrix[0]) - 1),
+                                      rv::iota(i, std::size(matrix)));
+            auto it = rng::find_if_not(rightBottomRectangle,
+                                       [&](auto val)
+                                       {
+                                           auto [col, row] = val;
+                                           return matrix[row][col] == 0;
+                                       });
+            if (std::end(rightBottomRectangle) == it)
+                return std::nullopt;
+            return *it;
+        }();
+        if (not pivot)
+            std::abort();  // brute force will no handle this, need a better implementation
+
+        auto [col, row] = *pivot;
+        std::swap(matrix[i], matrix[row]);
+        if (i != col)
+        {
+            swapColumn(matrix, i, col);
+            std::swap(limits[i], limits[col]);
+        }
+
+        // Eliminate rows below
+        for (std::size_t j = i + 1; j < std::size(matrix); ++j)
+            eliminateRowWith(matrix[j], matrix[i], i);
+
+        // Move zero rows to the end
+        auto removed = std::erase_if(  //
+            matrix,
+            [&](const auto& row) { return rng::all_of(row, isZero); });
+        workSize -= removed;
+    }
+    return limits;
+}
+
+void forEachFreeVariable(std::span<const std::int64_t> multipliers,
+                         std::span<const std::int64_t> limits,
+                         std::int64_t target,
+                         auto function)
+{
+    // It was nice to implement this as std::generator, but performance is terrible.
+    // I think a great use case for coroutines is cases when I/O is a bottleneck,
+    // or not very performant parsers, when it doesn't make a difference.
+    const std::size_t size = multipliers.size();
+    Row workingResult(size, 0);
+
+    auto dfs = [&](auto&& self, std::size_t i, std::int64_t rem) -> void
+    {
+        if (i == size)
+        {
+            if (rem == 0)
+                function(workingResult);
+            return;
+        }
+
+        for (auto x : rv::iota(0, limits[i] + 1))
+        {
+            workingResult[i] = x;
+            self(self, i + 1, rem - x * multipliers[i]);
+        }
+    };
+
+    dfs(dfs, 0, target);
+}
+
+Row numberOfPresses(Matrix& matrix, std::span<const std::int64_t> freeVariables)
+{
+    // Backtracking variables evaluation for given free variables solution
+    auto solution = freeVariables | rv::reverse | rng::to<std::vector>();
+
+    for (auto [i, row] : matrix | rv::enumerate | rv::reverse | rv::drop(1))
+    {
+        auto sum = row.back()
+                   - algorithm::sum(  //
+                       rv::zip(solution, matrix[i] | rv::reverse | rv::drop(1))
+                       | rv::transform(
+                           [](auto val)
+                           {
+                               auto [mult, x] = val;
+                               return mult * x;
+                           }));
+
+        // If the result if fractional or negative - this solution is wrong
+        if (sum % row[i] != 0 || sum / row[i] < 0)
+            return {};
+
+        solution.push_back(sum / row[i]);
+    }
+    return solution;
+}
+
+std::int64_t solve(const MachineConfiguration& config)
+{
+    // Make a matrix for input
+    // (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
+    //   0     0   0     0     0     1      = 3
+    //   0     1   0     0     0     1      = 5
+    //   0     0   1     1     1     0      = 4
+    //   1     1   0     1     0     0      = 7
+    //-----------------------------------
+    //   1     3  0      3     1     2
+    auto matrix =  //
+        rv::iota(0, std::ssize(config.targetState))
+        | rv::transform(
+            [&](std::size_t i)
+            {
+                auto result = std::vector(std::size(config.buttons) + 1, 0);
+                result.back() = config.targetState[i];
+                return result;
+            })
+        | rng::to<Matrix>();
+    for (const auto& [i, button] : config.buttons | rv::enumerate)
+    {
+        for (auto value : button)
+            matrix[value][i] = 1;
+    }
+
+    auto limits = gaussianElimination(matrix);
+
+    // We have diagonal here
+    auto rowCol = std::size(matrix) - 1;
+    auto min = std::numeric_limits<std::int64_t>::max();
+    forEachFreeVariable(  //
+        std::span{iterator::nth(matrix[rowCol], rowCol),
+                  std::size(matrix[rowCol]) - (rowCol + 1)},
+        std::span{iterator::nth(limits, rowCol),
+                  std::size(matrix[rowCol]) - (rowCol + 1)},
+        matrix[rowCol].back(),
+        [&](const auto& foundSolution)
+        {
+            auto solution = numberOfPresses(matrix, foundSolution);
+            if (std::empty(solution))
+                return;
+
+            if (auto sum = algorithm::sum(solution); sum < min)
+                min = sum;
+        });
+    return min;
+}
+
+constexpr auto solve2(std::span<const MachineConfiguration> input)
+{
+    std::vector correctAnswersToTestRefactoring{
+        58,  257, 63,  81,  84,  97,  43,  109, 72,  44,  95,  262, 24,  77,
+        34,  53,  63,  122, 69,  254, 206, 75,  81,  101, 68,  256, 228, 83,
+        70,  235, 85,  211, 228, 43,  199, 106, 287, 106, 24,  32,  91,  244,
+        98,  50,  244, 138, 76,  245, 57,  93,  70,  149, 52,  63,  125, 63,
+        83,  280, 70,  102, 115, 176, 193, 178, 231, 159, 246, 97,  5,   63,
+        45,  193, 224, 207, 58,  85,  60,  117, 41,  75,  142, 109, 239, 163,
+        69,  64,  83,  270, 160, 74,  31,  95,  42,  24,  83,  47,  277, 68,
+        11,  22,  44,  34,  42,  43,  31,  48,  197, 62,  38,  100, 145, 97,
+        113, 210, 59,  29,  26,  77,  221, 224, 108, 111, 160, 111, 35,  63,
+        88,  88,  54,  57,  44,  59,  67,  87,  46,  95,  140, 217, 67,  96,
+        265, 48,  268, 122, 68,  135, 22,  184, 150, 39,  66,  41,  31,  21,
+        246, 91,  258, 75,  40,  103, 18,  33,  107, 105, 46,  123, 51,  87,
+        50,  141, 58,  88,  94,  94,  50,  82,  94,  164, 51,  20,  231, 116,
+        55,  64,  70,  69,  110, 62,  184};
+
+
+    auto solutions = input | rv::transform(solve) | rng::to<std::vector>();
+    for ([[maybe_unused]] auto [expected, solution] :
+         rv::zip(correctAnswersToTestRefactoring, solutions))
+        assert(expected == solution);
+    return algorithm::sum(solutions);
+}
+}  // namespace aoc2025::day10
+
+int main()
+{
+    using namespace aoc2025::day10;
+
+    std::ifstream file("./input.txt");
+    if (not file)
+    {
+        fmt::println("Could not open input.txt");
+        return 1;
+    }
+
+    std::vector<MachineConfiguration> configurations;
+    for (std::string line; std::getline(file, line);)
+    {
+        auto [_1, _2, buttons, joltages] =
+            ctre::match<R"(\[([\.#]+)\] (\(.*\)) \{(.*)\})">(line);
+        auto joltageValues =
+            ctre::search_all<R"(\d+)">(joltages.to_view())
+            | rv::transform([](auto match) { return match.to_number(); })
+            | rng::to<Container>();
+
+        auto buttonsImpact =
+            ctre::search_all<R"(\([0-9,]+\))">(buttons.to_view())
+            | rv::transform(
+                [](auto match)
+                {
+                    // Extract numbers from within this parenthetical group
+                    return ctre::search_all<R"(\d+)">(match.to_view())
+                           | rv::transform([](auto numMatch)
+                                           { return numMatch.to_number(); })
+                           | rng::to<Container>();
+                })
+            | rng::to<std::vector>();
+
+        configurations.push_back({std::move(joltageValues), std::move(buttonsImpact)});
+    }
+    fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
+}
