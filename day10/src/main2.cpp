@@ -51,11 +51,11 @@ void eliminateRowWith(Row& target, const Row& pivot, std::size_t pivotIndex)
     auto targetMultiplier = target[pivotIndex] / gcd;
     auto pivotMultiplier = pivot[pivotIndex] / gcd;
 
-    std::transform(  //
-        iterator::nth(pivot, pivotIndex),
+    std::transform(                        //
+        iterator::nth(pivot, pivotIndex),  // source
         std::cend(pivot),
-        iterator::nth(target, pivotIndex),
-        iterator::nth(target, pivotIndex),
+        iterator::nth(target, pivotIndex),  // second source
+        iterator::nth(target, pivotIndex),  // destination
         [&](auto pivot, auto target)
         { return target * pivotMultiplier - pivot * targetMultiplier; });
 }
@@ -68,31 +68,32 @@ void swapColumn(Matrix& target, std::size_t lhs, std::size_t rhs)
 
 auto gaussianElimination(Matrix& matrix)
 {
+    const auto width = std::ssize(matrix[0]);
+    const auto height = std::ssize(matrix);
     // We will bruteforce free variables later, so we need to know their limits
     // For each column, find the minimum target value it affects.
-    // Limits are part of Gaussian elimination, because we may swap columns
+    // Limits are part of Gaussian elimination because we may swap columns
     // and need to track limits accordingly.
     auto limits =
-        rv::iota(0ll, std::ssize(matrix[0]) - 1)
+        rv::iota(0, width - 1)
         | rv::transform(
             [&](auto i)
             {
                 return rng::min(
-                    rv::iota(0, std::ssize(matrix))
+                    rv::iota(0, height)
                     | rv::filter([&](auto j) { return matrix[j][i] != 0; })
                     | rv::transform([&](auto j) { return matrix[j].back(); }));
             })
         | rng::to<std::vector>();
 
-    for (std::size_t workSize = std::size(matrix), i = 0; i < workSize; ++i)
+    for (std::int64_t workSize = height, i = 0; i < workSize; ++i)
     {
         // find non zero pivot
-        auto pivot = [&]() -> std::optional<std::pair<std::size_t, std::size_t>>
+        auto pivot = [&]() -> std::optional<std::pair<std::int64_t, std::int64_t>>
         {
             // prioritize row swap
             auto rightBottomRectangle =
-                rv::cartesian_product(rv::iota(i, std::size(matrix[0]) - 1),
-                                      rv::iota(i, std::size(matrix)));
+                rv::cartesian_product(rv::iota(i, width - 1), rv::iota(i, workSize));
             auto it = rng::find_if_not(rightBottomRectangle,
                                        [&](auto val)
                                        {
@@ -115,7 +116,7 @@ auto gaussianElimination(Matrix& matrix)
         }
 
         // Eliminate rows below
-        for (std::size_t j = i + 1; j < std::size(matrix); ++j)
+        for (auto j = i + 1; j < workSize; ++j)
             eliminateRowWith(matrix[j], matrix[i], i);
 
         // Move zero rows to the end
@@ -135,7 +136,7 @@ void forEachFreeVariable(std::span<const std::int64_t> multipliers,
     // It was nice to implement this as std::generator, but performance is terrible.
     // I think a great use case for coroutines is cases when I/O is a bottleneck,
     // or not very performant parsers, when it doesn't make a difference.
-    const std::size_t size = multipliers.size();
+    const auto size = std::size(multipliers);
     Row workingResult(size, 0);
 
     auto dfs = [&](auto&& self, std::size_t i, std::int64_t rem) -> void
@@ -297,5 +298,5 @@ int main()
     }
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
-    fmt::println("Time elapsed: {}", stopwatch.elapsed()); // 158ms
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 158ms
 }
