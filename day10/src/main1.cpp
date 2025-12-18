@@ -1,7 +1,11 @@
+#include "util/stopwatch.h"
+
+
 #include <ctre.hpp>
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <fmt/chrono.h>
 
 #include <algorithm>
 #include <bitset>
@@ -23,11 +27,12 @@ struct MachineConfiguration
     std::vector<Container> switchers;
 };
 
+namespace rv = std::views;
+namespace rng = std::ranges;
+
+
 constexpr auto solve1(const MachineConfiguration& input)
 {
-    namespace rv = std::ranges::views;
-    namespace rng = std::ranges;
-
     const auto numberOfOptions = (1 << std::size(input.switchers)) - 1;
     return rv::iota(0, numberOfOptions)
            | rv::filter(
@@ -50,9 +55,6 @@ constexpr auto solve1(const MachineConfiguration& input)
 
 constexpr auto solve1(std::span<const MachineConfiguration> input)
 {
-    namespace rv = std::ranges::views;
-    namespace rng = std::ranges;
-
     return rng::fold_left(  //
         input
             | rv::transform(
@@ -69,14 +71,15 @@ constexpr auto solve1(std::span<const MachineConfiguration> input)
 constexpr auto deserializeState(std::string_view str)
 {
     Container result;
-    for (auto [i, ch] : str | std::views::enumerate)
+    for (auto [i, ch] : str | rv::enumerate)
         result.set(i, ch == '#');
     return result;
 }
 static_assert(deserializeState(std::string_view{"#..##.."})
               == Container{0b0011001});  // 0b1001100
 
-constexpr auto deserializeSwitcher(std::span<const std::int8_t> config)
+
+constexpr auto deserializeSwitcher(std::ranges::range auto config)
 {
     Container result;
     for (const auto num : config)
@@ -142,29 +145,23 @@ int main()
     std::vector<MachineConfiguration> configurations;
     for (std::string line; std::getline(file, line);)
     {
-        auto [_1, mask, buttons, joltages] =
+        auto [_1, mask, buttons, _2] =
             ctre::match<"\\[([\\.#]+)\\] (\\(.*\\)) \\{(.*)\\}">(line);
-        // fmt::println("mask: {}, buttons: {}", mask.to_view(), buttons.to_view());
-        [[maybe_unused]] auto switchers =
-            buttons.to_view() | std::views::split(' ')
-            | std::views::transform(
-                [](auto v)
+        auto switchers =
+            ctre::search_all<R"(\([0-9,]+\))">(buttons.to_view())
+            | rv::transform(
+                [](auto match)
                 {
-                    std::string_view str{v};
                     return deserializeSwitcher(
-                        str.substr(1, str.size() - 2) | std::views::split(',')
-                        | std::views::transform(
-                            [](auto numView)
-                            {
-                                auto numStr = std::string_view{numView}
-                                              | std::ranges::to<std::string>();
-                                return static_cast<std::int8_t>(std::stoi(numStr));
-                            })
-                        | std::ranges::to<std::vector>());
+                        ctre::search_all<R"(\d+)">(match.to_view())
+                        | rv::transform([](auto numMatch)
+                                        { return numMatch.to_number(); }));
                 })
-            | std::ranges::to<std::vector>();
+            | rng::to<std::vector>();
 
         configurations.push_back(deserializeConfig(mask.to_view(), switchers));
     }
+    aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution1: {}", solve1(configurations));
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());  // 4ms
 }

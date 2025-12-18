@@ -1,11 +1,13 @@
 #include "util/algorithm.h"
 #include "util/iterator.h"
+#include "util/stopwatch.h"
 
 
 #include <ctre.hpp>
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <fmt/chrono.h>
 
 #include <algorithm>
 #include <bitset>
@@ -293,5 +295,7 @@ int main()
 
         configurations.push_back({std::move(joltageValues), std::move(buttonsImpact)});
     }
+    aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
+    fmt::println("Time elapsed: {}", stopwatch.elapsed()); // 158ms
 }
