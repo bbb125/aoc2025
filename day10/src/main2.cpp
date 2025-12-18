@@ -143,8 +143,7 @@ void forEachFreeVariable(std::span<const std::int64_t> multipliers,
     {
         if (i == size)
         {
-            if (rem == 0)
-                function(workingResult);
+            function(workingResult);
             return;
         }
 
@@ -163,7 +162,7 @@ Row numberOfPresses(Matrix& matrix, std::span<const std::int64_t> freeVariables)
     // Backtracking variables evaluation for given free variables solution
     auto solution = freeVariables | rv::reverse | rng::to<std::vector>();
 
-    for (auto [i, row] : matrix | rv::enumerate | rv::reverse | rv::drop(1))
+    for (auto [i, row] : matrix | rv::enumerate | rv::reverse)
     {
         auto sum = row.back()
                    - algorithm::sum(  //
@@ -213,22 +212,21 @@ std::int64_t solve(const MachineConfiguration& config)
     auto limits = gaussianElimination(matrix);
 
     // We have diagonal here
-    auto rowCol = std::size(matrix) - 1;
+    const auto diagonal = std::size(matrix) - 1;
+    const auto bruteForceStart = diagonal + 1;
+    const auto bruteForceSize = std::size(matrix[0]) - 1 - bruteForceStart;
     auto min = std::numeric_limits<std::int64_t>::max();
     forEachFreeVariable(  //
-        std::span{iterator::nth(matrix[rowCol], rowCol),
-                  std::size(matrix[rowCol]) - (rowCol + 1)},
-        std::span{iterator::nth(limits, rowCol),
-                  std::size(matrix[rowCol]) - (rowCol + 1)},
-        matrix[rowCol].back(),
+        std::span{iterator::nth(matrix[diagonal], bruteForceStart), bruteForceSize},
+        std::span{iterator::nth(limits, bruteForceStart), bruteForceSize},
+        matrix[diagonal].back(),
         [&](const auto& foundSolution)
         {
             auto solution = numberOfPresses(matrix, foundSolution);
             if (std::empty(solution))
                 return;
 
-            if (auto sum = algorithm::sum(solution); sum < min)
-                min = sum;
+            min = std::min(min, algorithm::sum(solution));
         });
     return min;
 }
@@ -298,5 +296,5 @@ int main()
     }
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
-    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 158ms
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 74ms
 }
