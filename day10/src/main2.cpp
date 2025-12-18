@@ -139,7 +139,7 @@ void forEachFreeVariable(std::span<const std::int64_t> multipliers,
     const auto size = std::size(multipliers);
     Row workingResult(size, 0);
 
-    auto dfs = [&](auto&& self, std::size_t i, std::int64_t rem) -> void
+    auto dfs = [&](this auto&& self, std::size_t i, std::int64_t rem) -> void
     {
         if (i == size)
         {
@@ -150,11 +150,11 @@ void forEachFreeVariable(std::span<const std::int64_t> multipliers,
         for (auto x : rv::iota(0, limits[i] + 1))
         {
             workingResult[i] = x;
-            self(self, i + 1, rem - x * multipliers[i]);
+            self(i + 1, rem - x * multipliers[i]);
         }
     };
 
-    dfs(dfs, 0, target);
+    dfs( 0, target);
 }
 
 Row numberOfPresses(Matrix& matrix, std::span<const std::int64_t> freeVariables)
