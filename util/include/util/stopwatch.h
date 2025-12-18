@@ -7,6 +7,7 @@ namespace aoc2025::time
 /**
  * The units of measurement for time elapsed.
  */
+using Microseconds = std::chrono::microseconds;
 using Milliseconds = std::chrono::milliseconds;
 using Seconds = std::chrono::seconds;
 using SecondsAsDouble = std::chrono::duration<double>;

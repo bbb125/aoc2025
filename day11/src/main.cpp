@@ -1,10 +1,12 @@
 #include "util/algorithm.h"
 #include "util/functors.h"
+#include "util/stopwatch.h"
 #include "util/views.h"
 
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <fmt/chrono.h>
 
 #include <cassert>
 #include <cstdint>
@@ -128,7 +130,11 @@ int main()
                     { return part | std::ranges::to<std::string>(); })
                 | std::ranges::to<std::vector>());
     }
+    aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day11.solution1: {}", solve1(connections, "you", "out"));  // 497
+    fmt::println("Time elapsed: {}", stopwatch.elapsed<aoc2025::time::Microseconds>());
+    stopwatch = {};
     fmt::println("day11.solution2: {}",
                  solve2(connections, "svr", "out", {"fft", "dac"}));  // 358564784931864
+    fmt::println("Time elapsed: {}", stopwatch.elapsed<aoc2025::time::Microseconds>());
 }

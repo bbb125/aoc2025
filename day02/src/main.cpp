@@ -1,7 +1,9 @@
 #include "util/numeric.h"
+#include "util/stopwatch.h"
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <fmt/chrono.h>
 
 #include <array>
 #include <cassert>
@@ -145,6 +147,10 @@ int main()
                      })
                  | std::ranges::to<std::vector>();
 
+    aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day01.solution1: {}", solve1(input));
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());
+    stopwatch = {};
     fmt::println("day01.solution2: {}", solve2(input));
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());
 }

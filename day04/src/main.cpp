@@ -1,4 +1,8 @@
+#include "util/stopwatch.h"
+
+
 #include <fmt/format.h>
+#include <fmt/chrono.h>
 
 
 #include <array>
@@ -138,6 +142,10 @@ int main()
     auto input = std::views::istream<std::string>(file)
                  | std::ranges::to<std::vector<std::string>>();
 
+    aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day04.solution1: {}", solve1(input));
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());
+    stopwatch = {};
     fmt::println("day04.solution2: {}", solve2(input));
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());
 }
