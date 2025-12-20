@@ -31,7 +31,12 @@ namespace rng = std::ranges;
 namespace aoc2025::day10
 {
 using Container = std::vector<int>;
+
+// Limit the number of buttons to allocate fixed-size arrays on stack.
+// Could use pmr or inline vector, but this is simpler and also constexpr compatible.
 constexpr std::size_t maxSize = 16;
+
+
 struct MachineConfiguration
 {
     Container targetState;
@@ -43,7 +48,7 @@ using Matrix = std::vector<Row>;
 
 constexpr auto isZero = std::bind_front(std::equal_to{}, 0);
 
-void eliminateRowWith(Row& target, const Row& pivot, std::size_t pivotIndex)
+constexpr void eliminateRowWith(Row& target, const Row& pivot, std::size_t pivotIndex)
 {
     if (target[pivotIndex] == 0)
         return;
@@ -62,13 +67,13 @@ void eliminateRowWith(Row& target, const Row& pivot, std::size_t pivotIndex)
         { return target * pivotMultiplier - pivot * targetMultiplier; });
 }
 
-void swapColumn(Matrix& target, std::size_t lhs, std::size_t rhs)
+constexpr void swapColumn(Matrix& target, std::size_t lhs, std::size_t rhs)
 {
     for (auto& row : target)
         std::swap(row[lhs], row[rhs]);
 }
 
-auto gaussianElimination(Matrix& matrix)
+constexpr auto gaussianElimination(Matrix& matrix)
 {
     const auto width = std::ssize(matrix[0]);
     const auto height = std::ssize(matrix);
@@ -88,8 +93,8 @@ auto gaussianElimination(Matrix& matrix)
             })
         | rng::to<std::vector>();
 
-    auto workSize = height;
-    for (std::int64_t i = 0; i < workSize; ++i)
+
+    for (std::int64_t workSize = height, i = 0; i < workSize; ++i)
     {
         // find non zero pivot
         auto pivot = [&]() -> std::optional<std::pair<std::int64_t, std::int64_t>>
@@ -108,7 +113,7 @@ auto gaussianElimination(Matrix& matrix)
             return *it;
         }();
         if (not pivot)
-            std::abort();  // brute force will no handle this, need a better implementation
+            std::abort();  // brute force will not handle this, need a better implementation
 
         auto [col, row] = *pivot;
         std::swap(matrix[i], matrix[row]);
@@ -140,8 +145,7 @@ constexpr void forEachFreeVariable(std::span<const std::int64_t> multipliers,
     // I think a great use case for coroutines is cases when I/O is a bottleneck,
     // or not very performant parsers, when it doesn't make a difference.
     const auto size = std::size(multipliers);
-    Row workingResult(size, 0);
-    // std::array<std::int64_t, maxSize> workingResult{};
+    std::array<std::int64_t, maxSize> workingResult{};
 
     auto dfs = [&](this auto&& self, std::size_t i, std::int64_t rem) -> void
     {
@@ -166,7 +170,7 @@ constexpr void numberOfPresses(Matrix& matrix,
                                auto andThen)
 {
     // Backtracking variables evaluation for given free variables solution
-    std::array<std::int64_t, maxSize> solution;
+    std::array<std::int64_t, maxSize> solution{};
     const auto width = std::size(matrix[0]) - 1;
     for (auto [i, val] : freeVariables | rv::enumerate)
         solution[std::size(matrix[0]) - 1 - std::ssize(freeVariables) + i] = val;
@@ -237,46 +241,42 @@ constexpr std::int64_t solve(const MachineConfiguration& config)
 
 constexpr auto solve2(std::span<const MachineConfiguration> input)
 {
-    std::vector correctAnswersToTestRefactoring{
-        58,  257, 63,  81,  84,  97,  43,  109, 72,  44,  95,  262, 24,  77,
-        34,  53,  63,  122, 69,  254, 206, 75,  81,  101, 68,  256, 228, 83,
-        70,  235, 85,  211, 228, 43,  199, 106, 287, 106, 24,  32,  91,  244,
-        98,  50,  244, 138, 76,  245, 57,  93,  70,  149, 52,  63,  125, 63,
-        83,  280, 70,  102, 115, 176, 193, 178, 231, 159, 246, 97,  5,   63,
-        45,  193, 224, 207, 58,  85,  60,  117, 41,  75,  142, 109, 239, 163,
-        69,  64,  83,  270, 160, 74,  31,  95,  42,  24,  83,  47,  277, 68,
-        11,  22,  44,  34,  42,  43,  31,  48,  197, 62,  38,  100, 145, 97,
-        113, 210, 59,  29,  26,  77,  221, 224, 108, 111, 160, 111, 35,  63,
-        88,  88,  54,  57,  44,  59,  67,  87,  46,  95,  140, 217, 67,  96,
-        265, 48,  268, 122, 68,  135, 22,  184, 150, 39,  66,  41,  31,  21,
-        246, 91,  258, 75,  40,  103, 18,  33,  107, 105, 46,  123, 51,  87,
-        50,  141, 58,  88,  94,  94,  50,  82,  94,  164, 51,  20,  231, 116,
-        55,  64,  70,  69,  110, 62,  184};
-
-    //
-    // int i = 0;
-    // for ([[maybe_unused]] auto [expected, solution] :
-    //      rv::zip(correctAnswersToTestRefactoring, input | rv::transform(solve)))
-    // {
-    //     fmt::println("{} expected: {}, got: {}, {}",
-    //                  i++,
-    //                  expected,
-    //                  solution,
-    //                  expected == solution ? "OK" : "FAIL");
-    //     // assert(expected == solution);
-    // }
-    // return 0;
-    auto solutions = input | rv::transform(solve);
-    return algorithm::sum(solutions);
+    return algorithm::sum(input | rv::transform(solve));
 }
 
-// static_assert(
-//     []
-//     {
-//         return solve({.targetState = {3, 5, 4, 7},
-//                       .buttons = {Row{3}, Row{1, 3}, Row{2}, Row{2, 3}, Row{0, 2}, Row{0, 1}}})
-//                == 10;
-//     }());
+static_assert(
+    []
+    {
+        return solve({.targetState = {3, 5, 4, 7},
+                      .buttons = {Container{3},
+                                  Container{1, 3},
+                                  Container{2},
+                                  Container{2, 3},
+                                  Container{0, 2},
+                                  Container{0, 1}}})
+               == 10;
+    }());
+static_assert(
+    []
+    {
+        return solve({.targetState = {7, 5, 12, 7, 2},
+                      .buttons = {Container{0, 2, 3, 4},
+                                  Container{2, 3},
+                                  Container{0, 4},
+                                  Container{0, 1, 2},
+                                  Container{1, 2, 3, 4}}})
+               == 12;
+    }());
+static_assert(
+    []
+    {
+        return solve({.targetState = {10, 11, 11, 5, 10, 5},
+                      .buttons = {Container{0, 1, 2, 3, 4},
+                                  Container{0, 3, 4},
+                                  Container{0, 1, 2, 4, 5},
+                                  Container{1, 2}}})
+               == 11;
+    }());
 }  // namespace aoc2025::day10
 
 int main()
@@ -317,5 +317,5 @@ int main()
     }
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
-    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 40ms
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 25ms
 }
