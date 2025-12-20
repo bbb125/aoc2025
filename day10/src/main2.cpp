@@ -1,4 +1,5 @@
 #include "util/algorithm.h"
+#include "util/geometry2d.h"
 #include "util/iterator.h"
 #include "util/stopwatch.h"
 
@@ -30,6 +31,7 @@ namespace rng = std::ranges;
 namespace aoc2025::day10
 {
 using Container = std::vector<int>;
+constexpr std::size_t maxSize = 16;
 struct MachineConfiguration
 {
     Container targetState;
@@ -86,7 +88,8 @@ auto gaussianElimination(Matrix& matrix)
             })
         | rng::to<std::vector>();
 
-    for (std::int64_t workSize = height, i = 0; i < workSize; ++i)
+    auto workSize = height;
+    for (std::int64_t i = 0; i < workSize; ++i)
     {
         // find non zero pivot
         auto pivot = [&]() -> std::optional<std::pair<std::int64_t, std::int64_t>>
@@ -128,22 +131,23 @@ auto gaussianElimination(Matrix& matrix)
     return limits;
 }
 
-void forEachFreeVariable(std::span<const std::int64_t> multipliers,
-                         std::span<const std::int64_t> limits,
-                         std::int64_t target,
-                         auto function)
+constexpr void forEachFreeVariable(std::span<const std::int64_t> multipliers,
+                                   std::span<const std::int64_t> limits,
+                                   std::int64_t target,
+                                   auto function)
 {
     // It was nice to implement this as std::generator, but performance is terrible.
     // I think a great use case for coroutines is cases when I/O is a bottleneck,
     // or not very performant parsers, when it doesn't make a difference.
     const auto size = std::size(multipliers);
     Row workingResult(size, 0);
+    // std::array<std::int64_t, maxSize> workingResult{};
 
     auto dfs = [&](this auto&& self, std::size_t i, std::int64_t rem) -> void
     {
         if (i == size)
         {
-            function(workingResult);
+            function(std::span{std::begin(workingResult), size});
             return;
         }
 
@@ -154,36 +158,35 @@ void forEachFreeVariable(std::span<const std::int64_t> multipliers,
         }
     };
 
-    dfs( 0, target);
+    dfs(0, target);
 }
 
-Row numberOfPresses(Matrix& matrix, std::span<const std::int64_t> freeVariables)
+constexpr void numberOfPresses(Matrix& matrix,
+                               std::span<const std::int64_t> freeVariables,
+                               auto andThen)
 {
     // Backtracking variables evaluation for given free variables solution
-    auto solution = freeVariables | rv::reverse | rng::to<std::vector>();
+    std::array<std::int64_t, maxSize> solution;
+    const auto width = std::size(matrix[0]) - 1;
+    for (auto [i, val] : freeVariables | rv::enumerate)
+        solution[std::size(matrix[0]) - 1 - std::ssize(freeVariables) + i] = val;
 
     for (auto [i, row] : matrix | rv::enumerate | rv::reverse)
     {
-        auto sum = row.back()
-                   - algorithm::sum(  //
-                       rv::zip(solution, matrix[i] | rv::reverse | rv::drop(1))
-                       | rv::transform(
-                           [](auto val)
-                           {
-                               auto [mult, x] = val;
-                               return mult * x;
-                           }));
+        auto result = row.back();
+        for (auto j = i + 1; std::cmp_less(j, width); ++j)
+            result -= row[j] * solution[j];
 
+        solution[i] = result / row[i];
         // If the result if fractional or negative - this solution is wrong
-        if (sum % row[i] != 0 || sum / row[i] < 0)
-            return {};
-
-        solution.push_back(sum / row[i]);
+        if (solution[i] < 0 or result % row[i] != 0)
+            return;
     }
-    return solution;
+    andThen(std::span{std::begin(solution), width});
 }
 
-std::int64_t solve(const MachineConfiguration& config)
+
+constexpr std::int64_t solve(const MachineConfiguration& config)
 {
     // Make a matrix for input
     // (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
@@ -203,6 +206,7 @@ std::int64_t solve(const MachineConfiguration& config)
                 return result;
             })
         | rng::to<Matrix>();
+
     for (const auto& [i, button] : config.buttons | rv::enumerate)
     {
         for (auto value : button)
@@ -220,13 +224,13 @@ std::int64_t solve(const MachineConfiguration& config)
         std::span{iterator::nth(matrix[diagonal], bruteForceStart), bruteForceSize},
         std::span{iterator::nth(limits, bruteForceStart), bruteForceSize},
         matrix[diagonal].back(),
-        [&](const auto& foundSolution)
+        [&](auto foundSolution)
         {
-            auto solution = numberOfPresses(matrix, foundSolution);
-            if (std::empty(solution))
-                return;
-
-            min = std::min(min, algorithm::sum(solution));
+            numberOfPresses(  //
+                matrix,
+                foundSolution,
+                [&](std::span<std::int64_t> solution)
+                { min = std::min(min, algorithm::sum(solution)); });
         });
     return min;
 }
@@ -249,13 +253,30 @@ constexpr auto solve2(std::span<const MachineConfiguration> input)
         50,  141, 58,  88,  94,  94,  50,  82,  94,  164, 51,  20,  231, 116,
         55,  64,  70,  69,  110, 62,  184};
 
-
-    auto solutions = input | rv::transform(solve) | rng::to<std::vector>();
-    for ([[maybe_unused]] auto [expected, solution] :
-         rv::zip(correctAnswersToTestRefactoring, solutions))
-        assert(expected == solution);
+    //
+    // int i = 0;
+    // for ([[maybe_unused]] auto [expected, solution] :
+    //      rv::zip(correctAnswersToTestRefactoring, input | rv::transform(solve)))
+    // {
+    //     fmt::println("{} expected: {}, got: {}, {}",
+    //                  i++,
+    //                  expected,
+    //                  solution,
+    //                  expected == solution ? "OK" : "FAIL");
+    //     // assert(expected == solution);
+    // }
+    // return 0;
+    auto solutions = input | rv::transform(solve);
     return algorithm::sum(solutions);
 }
+
+// static_assert(
+//     []
+//     {
+//         return solve({.targetState = {3, 5, 4, 7},
+//                       .buttons = {Row{3}, Row{1, 3}, Row{2}, Row{2, 3}, Row{0, 2}, Row{0, 1}}})
+//                == 10;
+//     }());
 }  // namespace aoc2025::day10
 
 int main()
@@ -296,5 +317,5 @@ int main()
     }
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
-    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 74ms
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 40ms
 }
