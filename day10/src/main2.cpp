@@ -145,12 +145,10 @@ constexpr void forEachFreeVariable(ConstRowSpan multipliers,
     // It was nice to implement this as std::generator, but performance is terrible.
     // I think a great use case for coroutines is cases when I/O is a bottleneck,
     // or not very performant parsers, when it doesn't make a difference.
-    const auto size = std::size(multipliers);
     std::array<std::int64_t, maxSize> workingResult{};
-
-    auto dfs = [&](this auto&& self, std::size_t i, std::int64_t rem) -> void
+    auto dfs = [&](this auto&& self, std::size_t i, std::int64_t rem)
     {
-        if (i == size)
+        if (const auto size = std::size(multipliers); i == size)
         {
             function(std::span{std::begin(workingResult), size});
             return;
@@ -316,5 +314,5 @@ int main()
     }
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
-    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 25ms
+    fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 24ms
 }

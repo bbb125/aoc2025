@@ -32,6 +32,10 @@ else ()
     add_compile_options(-ftrivial-auto-var-init=zero)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    add_compile_options("-O3" "-march=native")
+endif ()
+
 find_package(fmt REQUIRED)
 find_package(ctre REQUIRED)
 
