@@ -44,6 +44,8 @@ struct MachineConfiguration
 };
 
 using Row = std::vector<std::int64_t>;
+using RowSpan = std::span<std::int64_t>;
+using ConstRowSpan = std::span<const std::int64_t>;
 using Matrix = std::vector<Row>;
 
 constexpr auto isZero = std::bind_front(std::equal_to{}, 0);
@@ -57,14 +59,13 @@ constexpr void eliminateRowWith(Row& target, const Row& pivot, std::size_t pivot
 
     auto targetMultiplier = target[pivotIndex] / gcd;
     auto pivotMultiplier = pivot[pivotIndex] / gcd;
-
-    std::transform(                        //
-        iterator::nth(pivot, pivotIndex),  // source
-        std::cend(pivot),
-        iterator::nth(target, pivotIndex),  // second source
-        iterator::nth(target, pivotIndex),  // destination
-        [&](auto pivot, auto target)
-        { return target * pivotMultiplier - pivot * targetMultiplier; });
+    auto size = std::size(target) - pivotIndex;
+    for (auto [targetElement, pivotElement] : rng::views::zip(  //
+             std::span{iterator::nth(target, pivotIndex), size},
+             std::span{iterator::nth(pivot, pivotIndex), size}))
+    {
+        targetElement = targetElement * pivotMultiplier - pivotElement * targetMultiplier;
+    }
 }
 
 constexpr void swapColumn(Matrix& target, std::size_t lhs, std::size_t rhs)
@@ -136,8 +137,8 @@ constexpr auto gaussianElimination(Matrix& matrix)
     return limits;
 }
 
-constexpr void forEachFreeVariable(std::span<const std::int64_t> multipliers,
-                                   std::span<const std::int64_t> limits,
+constexpr void forEachFreeVariable(ConstRowSpan multipliers,
+                                   ConstRowSpan limits,
                                    std::int64_t target,
                                    auto function)
 {
@@ -165,9 +166,7 @@ constexpr void forEachFreeVariable(std::span<const std::int64_t> multipliers,
     dfs(0, target);
 }
 
-constexpr void numberOfPresses(Matrix& matrix,
-                               std::span<const std::int64_t> freeVariables,
-                               auto andThen)
+constexpr void numberOfPresses(Matrix& matrix, ConstRowSpan freeVariables, auto andThen)
 {
     // Backtracking variables evaluation for given free variables solution
     std::array<std::int64_t, maxSize> solution{};
@@ -186,7 +185,7 @@ constexpr void numberOfPresses(Matrix& matrix,
         if (solution[i] < 0 or result % row[i] != 0)
             return;
     }
-    andThen(std::span{std::begin(solution), width});
+    andThen({std::begin(solution), width});
 }
 
 
@@ -225,15 +224,15 @@ constexpr std::int64_t solve(const MachineConfiguration& config)
     const auto bruteForceSize = std::size(matrix[0]) - 1 - bruteForceStart;
     auto min = std::numeric_limits<std::int64_t>::max();
     forEachFreeVariable(  //
-        std::span{iterator::nth(matrix[diagonal], bruteForceStart), bruteForceSize},
-        std::span{iterator::nth(limits, bruteForceStart), bruteForceSize},
+        {iterator::nth(matrix[diagonal], bruteForceStart), bruteForceSize},
+        {iterator::nth(limits, bruteForceStart), bruteForceSize},
         matrix[diagonal].back(),
         [&](auto foundSolution)
         {
             numberOfPresses(  //
                 matrix,
                 foundSolution,
-                [&](std::span<std::int64_t> solution)
+                [&](ConstRowSpan solution)
                 { min = std::min(min, algorithm::sum(solution)); });
         });
     return min;
