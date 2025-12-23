@@ -2,6 +2,7 @@
 #include "util/geometry2d.h"
 #include "util/iterator.h"
 #include "util/stopwatch.h"
+#include "util/trace.h"
 
 
 #include <ctre.hpp>
@@ -24,7 +25,6 @@
 #include <generator>
 #include <numeric>
 
-
 namespace rv = std::ranges::views;
 namespace rng = std::ranges;
 
@@ -32,10 +32,11 @@ namespace aoc2025::day10
 {
 using Container = std::vector<int>;
 
-// Limit the number of buttons to allocate fixed-size arrays on stack.
+// Limit the number of buttons to allocate fixed-size arrays on the stack.
 // Could use pmr or inline vector, but this is simpler and also constexpr compatible.
 constexpr std::size_t maxSize = 16;
-
+constexpr auto enableTraceMode = false;
+constexpr auto trace = diagnostic::makeTracer<enableTraceMode>();
 
 struct MachineConfiguration
 {
@@ -233,6 +234,8 @@ constexpr std::int64_t solve(const MachineConfiguration& config)
                 [&](ConstRowSpan solution)
                 { min = std::min(min, algorithm::sum(solution)); });
         });
+
+    trace("{}", min);
     return min;
 }
 
@@ -241,45 +244,67 @@ constexpr auto solve2(std::span<const MachineConfiguration> input)
     return algorithm::sum(input | rv::transform(solve));
 }
 
+constexpr MachineConfiguration parseInputLine(std::string_view line)
+{
+    auto [_1, _2, buttons, joltages] =
+        ctre::match<R"(\[([\.#]+)\] (\(.*\)) \{(.*)\})">(line);
+    auto joltageValues =
+        ctre::search_all<R"(\d+)">(joltages.to_view())
+        | rv::transform([](auto match) { return match.to_number(); });
+
+    auto buttonsImpact =
+        ctre::search_all<R"(\([0-9,]+\))">(buttons.to_view())
+        | rv::transform(
+            [](auto match)
+            {
+                // Extract numbers from within this parenthetical group
+                return ctre::search_all<R"(\d+)">(match.to_view())
+                       | rv::transform([](auto numMatch)
+                                       { return numMatch.to_number(); })
+                       | rng::to<Container>();
+            });
+    return {joltageValues | rng::to<Container>(),
+            buttonsImpact | rng::to<std::vector>()};
+}
+
+static_assert(
+    solve(parseInputLine("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}")) == 10);
+static_assert(
+    solve(parseInputLine(  //
+        "[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}"))
+    == 12);
+static_assert(
+    solve(parseInputLine(  //
+        "[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}"))
+    == 11);
+
 static_assert(
     []
     {
-        return solve({.targetState = {3, 5, 4, 7},
-                      .buttons = {Container{3},
-                                  Container{1, 3},
-                                  Container{2},
-                                  Container{2, 3},
-                                  Container{0, 2},
-                                  Container{0, 1}}})
-               == 10;
+        // part of an actual input
+        auto input = std::to_array<std::string_view>({
+            // clang-format off
+"[.#.###] (0,1,2) (0,2,4,5) (3,5) (2,4,5) (0,1,3,4) (0,2,4) (5) {21,18,30,14,34,40}",
+"[.##.##.#] (0,4,5,6) (1,3,6) (0,1,2,3,4,5,6) (0,3,6,7) (1,2,3,4,6,7) (1,2,4,5) {206,71,52,235,56,42,239,196}",
+"[..##] (2,3) (0,3) (1,2) (0,2) {37,13,45,31}",
+"[##......] (3) (0,3,4,5,7) (2,3,7) (0,2,5) (1,2,4,5,7) (4,6,7) (0,1,2,4,5,6) (0,2,3,4,6) (3,4,6) {29,11,38,45,45,33,27,54}",
+"[#.....##] (5,7) (3,6) (0,2,3,4,6,7) (2,4) (0,6,7) (1,3,6,7) (1,2,5,6,7) {17,27,16,43,6,30,64,64}",
+"[##.#.#.#] (0,3,4,5,6) (3,5,6,7) (0,2,7) (0,1,6,7) (1,2,3,4,6,7) (0,3,4,7) (0,1,2,4,5,6,7) (0,1,3,5,7) (0,1,2,4,5) (0,3) {80,74,41,62,60,59,56,88}",
+"[#.#.] (0,2) (2,3) (0,3) (1,3) (3) (1,2) {26,7,25,27}",
+"[#..#####..] (4,5,7,8,9) (1,5,6,7,8,9) (1,7,9) (5) (0,2,3,6) (4,5,7) (0,3) (0,1,3,4,5,6) (2,6,8) (4,5) (6,8) (1,2,4,5,6,7,8,9) {17,30,9,17,49,84,47,62,63,47}",
+"[.#..###...] (0,2,3,4,6,7,8) (0,3,5,6,7,8) (1,5,7) (0,1,3,5,6,7) (0,2,3,4,6,8) (1,2,3,4,5,6,8,9) (2,6,7) (0,1,3,4,8) (7) (0,1,2,4,7,8) {48,25,54,58,48,22,64,47,53,11}",
+            // clang-format on
+        });
+        return algorithm::sum(input | rv::transform(parseInputLine)
+                              | rv::transform(solve))
+               == (58 + 257 + 63 + 81 + 84 + 97 + 43 + 109 + 72);
     }());
-static_assert(
-    []
-    {
-        return solve({.targetState = {7, 5, 12, 7, 2},
-                      .buttons = {Container{0, 2, 3, 4},
-                                  Container{2, 3},
-                                  Container{0, 4},
-                                  Container{0, 1, 2},
-                                  Container{1, 2, 3, 4}}})
-               == 12;
-    }());
-static_assert(
-    []
-    {
-        return solve({.targetState = {10, 11, 11, 5, 10, 5},
-                      .buttons = {Container{0, 1, 2, 3, 4},
-                                  Container{0, 3, 4},
-                                  Container{0, 1, 2, 4, 5},
-                                  Container{1, 2}}})
-               == 11;
-    }());
+
 }  // namespace aoc2025::day10
 
 int main()
 {
     using namespace aoc2025::day10;
-
     std::ifstream file("./input.txt");
     if (not file)
     {
@@ -289,29 +314,7 @@ int main()
 
     std::vector<MachineConfiguration> configurations;
     for (std::string line; std::getline(file, line);)
-    {
-        auto [_1, _2, buttons, joltages] =
-            ctre::match<R"(\[([\.#]+)\] (\(.*\)) \{(.*)\})">(line);
-        auto joltageValues =
-            ctre::search_all<R"(\d+)">(joltages.to_view())
-            | rv::transform([](auto match) { return match.to_number(); })
-            | rng::to<Container>();
-
-        auto buttonsImpact =
-            ctre::search_all<R"(\([0-9,]+\))">(buttons.to_view())
-            | rv::transform(
-                [](auto match)
-                {
-                    // Extract numbers from within this parenthetical group
-                    return ctre::search_all<R"(\d+)">(match.to_view())
-                           | rv::transform([](auto numMatch)
-                                           { return numMatch.to_number(); })
-                           | rng::to<Container>();
-                })
-            | rng::to<std::vector>();
-
-        configurations.push_back({std::move(joltageValues), std::move(buttonsImpact)});
-    }
+        configurations.push_back({parseInputLine(line)});
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day10.solution2: {}", solve2(configurations));  // 20142
     fmt::println("Time elapsed: {}", stopwatch.elapsed());        // 24ms

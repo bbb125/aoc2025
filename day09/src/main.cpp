@@ -1,8 +1,10 @@
 #include "util/geometry2d.h"
+#include "util/stopwatch.h"
 #include "util/views.h"
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <fmt/chrono.h>
 
 #include <ctre.hpp>
 
@@ -102,8 +104,12 @@ int main()
             return 1;
         }
     }
+    aoc2025::time::Stopwatch sw;
     fmt::println("day09.solution1: {}", solve1(points));  // 4755429952
-    fmt::println("day09.solution2: {}",
-                 solve2(points));  // 4537026090 too high, 1429564036 too low
+    fmt::println("Time elapsed: {}", sw.elapsed<>());
+
+    sw = {};
+    fmt::println("day09.solution2: {}", solve2(points));
+    fmt::println("Time elapsed: {}", sw.elapsed<>());
     // 1429596008 - correct
 }

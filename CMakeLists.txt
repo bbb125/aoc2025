@@ -12,8 +12,7 @@ add_compile_options(-fdiagnostics-color=always)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_options(-Wno-error=unknown-warning-option)
 endif()
-
-add_compile_options(-fconstexpr-ops-limit=1000000000)
+add_compile_options(-fconstexpr-ops-limit=10000000000)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 # todo: had  to use gcc because clang's stl sucks, but no asan on apple's gcc -- figure out later
 #    if(NOT WITH_SANITIZERS OR WITH_SANITIZERS STREQUAL "")
