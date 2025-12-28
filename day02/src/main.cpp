@@ -1,9 +1,13 @@
 #include "util/numeric.h"
 #include "util/stopwatch.h"
+#include "util/trace.h"
+#include "util/algorithm.h"
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <fmt/chrono.h>
+
+#include <ctre.hpp>
 
 #include <array>
 #include <cassert>
@@ -17,9 +21,12 @@
 
 namespace aoc2025::day02
 {
-[[maybe_unused]] constexpr auto trace = false;
+namespace rv = std::views;
+namespace rng = std::ranges;
+
 using Int = std::int64_t;
 using Range = std::pair<Int, Int>;
+constexpr auto trace = diagnostic::makeTracer<false>();
 
 constexpr auto isInvalid(Int value, int chunks)
 {
@@ -51,19 +58,13 @@ static_assert(not isInvalid(1234, 4));
 
 constexpr auto solve1(std::span<const Range> numbers)
 {
-    namespace rv = std::views;
-
     auto solveForRange = [](const Range& rng)
     {
-        return std::ranges::fold_left(  //
+        return algorithm::sum(  //
             rv::iota(rng.first, rng.second + 1)
-                | rv::filter(std::bind_back(isInvalid, 2)),
-            0ll,
-            std::plus<>{});
+            | rv::filter(std::bind_back(isInvalid, 2)));
     };
-    return std::ranges::fold_left(numbers | std::views::transform(solveForRange),
-                                  0LL,
-                                  std::plus<>{});
+    return algorithm::sum(numbers | rv::transform(solveForRange));
 }
 
 static_assert(solve1(std::to_array(  //
@@ -87,25 +88,16 @@ constexpr auto solve2(std::span<const Range> numbers)
 
     auto solveForRange = [&](const Range& rng)
     {
-        return std::ranges::fold_left(  //
+        return algorithm::sum(  //
             rv::iota(rng.first, rng.second + 1)
-                | rv::filter(
-                    [](auto value)
-                    {
-                        auto len = numerics::countDigits(value);
-                        for (int chunks = 2; chunks <= len; ++chunks)
-                        {
-                            if (isInvalid(value, chunks))
-                                return true;
-                        }
-                        return false;
-                    }),
-            0ll,
-            std::plus<>{});
+            | rv::filter(
+                [](auto value)
+                {
+                    return rng::any_of(rv::iota(2, numerics::countDigits(value) + 1),
+                                       std::bind_front(isInvalid, value));
+                }));
     };
-    return std::ranges::fold_left(numbers | std::views::transform(solveForRange),
-                                  0LL,
-                                  std::plus<>{});
+    return algorithm::sum(numbers | rv::transform(solveForRange));
 }
 
 static_assert(solve2(std::to_array(  //
@@ -129,23 +121,20 @@ int main()
     using namespace aoc2025::day02;
     std::ifstream file("./input.txt");
     std::string line;
-    if (!file || !std::getline(file, line))
+    if (not file || not std::getline(file, line))
     {
         fmt::println("Failed to read input file");
         return 1;
     }
-    auto input = line | std::views::split(',')
-                 | std::views::transform(
-                     [](auto&& rng)
+    auto input = ctre::search_all<R"(([0-9]+)-([0-9]+))">(line)
+                 | rv::transform(
+                     [](auto match) -> Range
                      {
-                         auto s = rng | std::ranges::to<std::string>();
-                         auto dashPos = s.find('-');
-                         assert(dashPos != std::string::npos && "Invalid range format");
-                         auto left = std::stoll(s.substr(0, dashPos));
-                         auto right = std::stoll(s.substr(dashPos + 1));
-                         return Range{left, right};
+                         auto [_, left, right] = match;
+                         return {left.template to_number<Int>(),
+                                 right.template to_number<Int>()};
                      })
-                 | std::ranges::to<std::vector>();
+                 | rng::to<std::vector>();
 
     aoc2025::time::Stopwatch<> stopwatch;
     fmt::println("day01.solution1: {}", solve1(input));

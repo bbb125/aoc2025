@@ -1,3 +1,6 @@
+#include "util/trace.h"
+
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -11,7 +14,7 @@
 namespace aoc2025::day01
 {
 constexpr auto fullCycle = 100;
-constexpr bool trace = false;
+constexpr auto trace = diagnostic::makeTracer<false>();
 
 struct RotationResult
 {
@@ -65,8 +68,8 @@ constexpr int solve2(std::span<const int> input, int start = 50)
         {
             auto [pos, counter] = acc;
             auto [rotations, newPos] = rotate(pos, v);
-            if (!std::is_constant_evaluated() && trace)
-                fmt::println("{} + {} = {}", acc, v, std::tuple{newPos, counter + rotations});
+
+            trace("{} + {} = {}", acc, v, std::tuple{newPos, counter + rotations});
             return std::tuple{newPos, counter + rotations};
         });
     return count;
@@ -99,8 +102,7 @@ int main()
                          }
                      })
                  | std::ranges::to<std::vector>();
-    if constexpr (trace)
-        fmt::println("inputs: {}", input);
+    trace("inputs: {}", input);
     fmt::println("day01.1: {}", solve1(input));
     fmt::println("day01.2: {}", solve2(input));  // 5933
     return 0;
